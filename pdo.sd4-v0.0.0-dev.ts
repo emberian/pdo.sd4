@@ -23,16 +23,16 @@ class Planet {
         this.dom_elt = dom_elt
     }
 
-    get document(): Promise<HTMLIFrameElement> {
-        if (this.view_frame !== null) { return Promise.resolve(this.view_frame); }
-
-        return new Promise<HTMLIFrameElement>(function (resolve, reject) {
+    get document(): Promise<HTMLDocument> {
+        if (this.view_frame) { return Promise.resolve(this.view_frame.contentDocument); }
+        let self = this;
+        return new Promise<HTMLDocument>(function (resolve, reject) {
             const pbody = document.createElement("iframe");
-            window.addEventListener("message", e => { resolve(pbody); }, { once: true });
+            window.addEventListener("message", e => { resolve(pbody.contentDocument); }, { once: true });
             pbody.addEventListener("error", e => { reject(); }, { once: true });
             pbody.height = "50";
             document.body.appendChild(pbody);
-            pbody.src = `https://sd4.arke.me/Map/PlanetaryBody/${this.uuid}`;
+            pbody.src = `https://sd4.arke.me/Map/PlanetaryBody/${self.uuid}`;
         })
     }
 }
@@ -54,7 +54,7 @@ class Fleet {
 
     async findUuid(planet_uuid_hint: string): Promise<string> {
         // find the fleet uuid, which annoyingly isn't exposed _anywhere_ else.
-        if (this.uuid !== null) { return this.uuid; }
+        if (this.uuid) { return this.uuid; }
 
         const resp = await fetch(`/Military/EmbarkArmyChoice?PlanetaryBodyId=${planet_uuid_hint}&_=${Date.now()}`, { method: "GET" });
         const r = document.createRange().createContextualFragment(await resp.text());
@@ -91,8 +91,8 @@ class cmr {
                 const a = sq.children[0] as HTMLAnchorElement;
                 if (!(!a || !a.href)) {
                     var match = a.href.match(/PlanetaryBody\/(.*)/)
-                    if (match !== null) {
-                        detected_planets.push(new Planet(sq.id, match[1].split('-').map(i => parseInt(i)) as [number, number], sq));
+                    if (match) {
+                        detected_planets.push(new Planet(match[1], sq.id.split('-').map(i => parseInt(i)) as [number, number], sq));
                     }
                 }
             }
@@ -106,7 +106,7 @@ class cmr {
             const a = sq.children[0] as HTMLDivElement;
             if (!(!a)) {
                 var match = a.style.background.match(/Star/);
-                if (match !== null) {
+                if (match) {
                     detected_planets.push(sq.id.split('-').map(i => parseInt(i)) as [number, number]);
                 }
             }
@@ -192,30 +192,31 @@ class cmr {
 
     static async buildLand(planet: Planet, square: [number, number], building: BuildingType, update?: boolean) {
         console.log(`Building a ${building} at ${square} on ${planet.uuid}`);
+        let doc = await planet.document;
         function LandMapUpdate(data) {
-            $('#MapIcon_' + data.ImageTargetId)[0].innerHTML = data.ImageTarget;
+            $(doc.body).find('#MapIcon_' + data.ImageTargetId)[0].innerHTML = data.ImageTarget;
             if (data.AllowTargetDraggable == true) {
-                $('#Army_' + data.ImageTargetId).draggable({
+                $(doc.body).find('#Army_' + data.ImageTargetId).draggable({
                     snap: '.GalaxyMapButton',
                     snapMode: 'inner',
                     helper: 'clone'
                 });
             }
             else {
-                $('#' + data.ImageTargetId).draggable('disable');
+                $(doc.body).find('#' + data.ImageTargetId).draggable('disable');
             }
 
             if (data.ImageSourceId != '') {
-                $('#MapIcon_' + data.ImageSourceId)[0].innerHTML = data.ImageSource;
+                $(doc.body).find('#MapIcon_' + data.ImageSourceId)[0].innerHTML = data.ImageSource;
                 if (data.AllowSourceDraggable == true) {
-                    $('#Army_' + data.ImageSourceId).draggable({
+                    $(doc.body).find('#Army_' + data.ImageSourceId).draggable({
                         snap: '.GalaxyMapButton',
                         snapMode: 'inner',
                         helper: 'clone'
                     });
                 }
                 else {
-                    $('#' + data.ImageSourceId).draggable('disable');
+                    $(doc.body).find('#' + data.ImageSourceId).draggable('disable');
                 }
             }
         }
@@ -266,7 +267,7 @@ class cmr {
     }
 
     static async findOpenPlanetSquare(planet: Planet): Promise<[number, number]> {
-        for (const elt of (await planet.document).contentDocument.querySelectorAll('span.GalaxyMapButton:empty')) {
+        for (const elt of (await planet.document).querySelectorAll('span.GalaxyMapButton:empty')) {
             const [x, y] = elt.id.split('-').map(i => parseInt(i));
             if (x > 1 && y > 1) {
                 return [x, y];
@@ -307,15 +308,15 @@ class cmr {
     static async settleSystem() {
         let system = new System(cmr.systemId());
         let fleet = await cmr.findSettlerFleet();
-        cmr.buildSpace(system, fleet.last_known_coords, SpaceBuildingType.J, true);
+        await cmr.buildSpace(system, fleet.last_known_coords, SpaceBuildingType.J, true);
         for (let star of cmr.detectStars()) {
             for (let open_slot of cmr.findOpenNeighbors(star)) {
-                cmr.buildSpace(system, open_slot, SpaceBuildingType.S, true)
+                await cmr.buildSpace(system, open_slot, SpaceBuildingType.S, true)
             }
         }
         for (let planet of cmr.detectPlanets()) {
-            cmr.settlePlanet(planet);
-            cmr.spamFabs(planet);
+            await cmr.settlePlanet(planet);
+            await cmr.spamFabs(planet);
         }
     }
 }
