@@ -1,0 +1,23 @@
+{
+  "name": "pdo.sd4",
+  "version": "0.0.0",
+  "description": "package delivery optimizer for sd4",
+  "main": "pdo.sd4-v0.0.0-dev.js",
+  "dependencies": {
+    "@types/jquery": "^3.3.30"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cmr/pdo.sd4.git"
+  },
+  "author": "cmr <corey@octayn.net>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/cmr/pdo.sd4/issues"
+  },
+  "homepage": "https://github.com/cmr/pdo.sd4#readme"
+}
