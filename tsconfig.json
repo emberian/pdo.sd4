@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES2017",
+        "jsx": "preserve",
+	"sourceMap": true,
+	"noImplicitAny": true
+    },
+    "exclude": [
+        "*.js"
+    ],
+    "include": ["*.ts"]
+}
